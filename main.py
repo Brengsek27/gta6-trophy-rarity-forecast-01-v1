@@ -64,9 +64,9 @@ def forecast_case(case):
             count_forecast = count_mean + count_slope * (target_x - sum(w * x for w, x in zip(sw, sx)) / sum(sw))
             player_forecast = player_mean + player_slope * (target_x - sum(w * x for w, x in zip(sw, sx)) / sum(sw))
             count_rate = clamp_rate(100.0 * math.exp(min(700, count_forecast - player_forecast)))
-            median = (trend + logit(count_rate)) / 2.0 - 1.05 * math.exp(-horizon_days / 2.0)
+            median = (trend + logit(count_rate)) / 2.0 - 1.25 * math.exp(-horizon_days / 2.0)
             residual = min(1.0, max(0.12, residual))
-            refresh = 0.90 * math.exp(-horizon_days / 4.0)
+            refresh = 0.9142 * math.exp(-horizon_days / 4.0)
             spread = math.sqrt(walk_spread ** 2 + residual ** 2 + refresh ** 2)
         quantiles = [round(clamp_rate(logistic(median + z * spread)), 4) for z in Z]
         for qi in range(1, len(quantiles)):
