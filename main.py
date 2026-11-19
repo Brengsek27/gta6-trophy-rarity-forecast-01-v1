@@ -7,6 +7,7 @@ from pathlib import Path
 INPUT_DIR = Path(os.environ.get("MAKEFUN_INPUT_DIR", "/input"))
 OUTPUT_DIR = Path(os.environ.get("MAKEFUN_OUTPUT_DIR", "/output"))
 Z = (-1.645, -0.674, 0.0, 0.674, 1.645)
+FIRST_REFRESH_PLAYERS = 3868  # RULES.txt: first-refresh players tracked at 04:30Z.
 
 
 def clamp_rate(value):
@@ -36,6 +37,7 @@ def fit_line(xs, ys, weights):
 
 def forecast_case(case):
     history = case["history"]
+    frozen = len({(row["players_tracked"], tuple(row["rates"])) for row in history}) < 2
     target = datetime.fromisoformat(case["target"].replace("Z", "+00:00"))
     release = datetime.fromisoformat(case["game"]["release_date"] + "T00:00:00+00:00")
     target_x = math.log1p((target - release).total_seconds() / 3600.0)
@@ -51,6 +53,9 @@ def forecast_case(case):
             median, spread = logit(99.99), 0.05
         elif not samples:
             median, spread = logit(0.01), math.hypot(walk_spread, 1.0)
+        elif frozen:
+            median = logit(rates[-1] * history[-1]["players_tracked"] / FIRST_REFRESH_PLAYERS)
+            spread = math.hypot(0.30, walk_spread)
         else:
             sx = [sample[0] for sample in samples]
             sw = [math.exp(2.0 * (x - xs[-1])) for x in sx]
