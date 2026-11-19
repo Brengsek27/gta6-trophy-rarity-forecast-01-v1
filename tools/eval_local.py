@@ -72,6 +72,9 @@ def answer_for(case, phi):
         if rate is None:
             answer.append(0.01)
             continue
+        if rate == 100:
+            answer.append(100.0)
+            continue
         old_count = rate * old_players / 100
         new_count = new_players * rate / 100 * phi
         answer.append(100 * (old_count + new_count) / 3868)
