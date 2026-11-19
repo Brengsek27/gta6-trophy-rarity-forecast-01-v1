@@ -82,6 +82,27 @@ def coverage(answer, rows):
     return sum(row["q"][0] <= value <= row["q"][4] for value, row in zip(answer, rows)) / len(answer)
 
 
+def grid_search(case):
+    answers = [answer_for(case, phi) for phi in (0, 0.1, 0.25, 0.5)]
+    base = [logit(rate if rate is not None else 0.01) for rate in case["history"][-1]["rates"]]
+    walk = 0.50 * math.sqrt(case["horizon_minutes"] / 1440)
+    shift_decay = math.exp(-(case["horizon_minutes"] / 1440) / 2.0)
+    best = None
+    for shift_step in range(40, 181, 5):
+        shift = shift_step / 100
+        for refresh_step in range(30, 151, 5):
+            refresh = refresh_step / 100
+            spread = math.sqrt(walk * walk + 0.12 * 0.12 + refresh * refresh)
+            qs = [[min(99.99, max(0.01, 100 / (1 + math.exp(-(median - shift * shift_decay + z * spread))))) for z in Z] for median in base]
+            qs[1] = [min(99.99, max(0.01, 100 / (1 + math.exp(-(logit(99.99) + z * 0.05))))) for z in Z]
+            rows = [{"q": row} for row in qs]
+            scenario_losses = [pinball(answer, rows) for answer in answers]
+            score = max(scenario_losses)
+            if best is None or score < best[0]:
+                best = (score, shift, refresh, scenario_losses)
+    return best
+
+
 def main():
     cases = [load_json(CASES / f"p{index:02}.in") for index in range(2)]
     reports = {}
@@ -113,6 +134,8 @@ def main():
             entry_rows = reports[case["id"]]["entry"][0]
             base_rows = reports[case["id"]]["starter"][0]
             print(f"{case['id']:4}  {phi:>4.2f}  {pinball(answer, entry_rows):.6f}/{coverage(answer, entry_rows):.3f}          {pinball(answer, base_rows):.6f}/{coverage(answer, base_rows):.3f}")
+    optimum = grid_search(cases[0])
+    print(f"\nPractice minimax grid: shift={optimum[1]:.2f} logit, refresh spread={optimum[2]:.2f}; worst loss={optimum[0]:.6f}")
     case = json.loads(json.dumps(cases[0]))
     case["id"] = "synthetic-final"
     case["horizon_minutes"] = 6510
